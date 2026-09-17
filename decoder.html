@@ -2,41 +2,147 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>File Smuggling — Decoder</title>
 <style>
-body{font-family:Arial,Helvetica,sans-serif;padding:24px;background:#fff;max-width:500px;}
-h2{margin:0 0 2px;font-size:16px;} .ver{font-size:11px;color:#999;margin-bottom:20px;}
-table{border-spacing:0;width:100%;} td{padding:6px 10px;font-size:13px;vertical-align:middle;}
-td:first-child{width:90px;color:#333;}
-input[type=password]{font-family:Arial;font-size:13px;width:100%;padding:3px 6px;}
-button{font-family:Arial;font-size:13px;padding:4px 14px;cursor:pointer;background:#1a7a60;color:#fff;border:1px solid #1a7a60;border-radius:2px;}
-button:hover:not(:disabled){background:#166952;} button:disabled{opacity:.4;cursor:default;}
-progress{display:none;width:100%;height:10px;margin-top:10px;}
-.st{font-size:11px;color:#444;margin-top:6px;min-height:16px;}
-.note{font-size:11px;color:#555;margin-top:8px;line-height:1.6;}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  padding: 36px 20px;
+  background: #ffffff;
+  color: #1f2328;
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+.header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #d0d7de;
+  padding-bottom: 12px;
+}
+h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2328;
+  letter-spacing: -0.2px;
+}
+.ver {
+  font-size: 12px;
+  color: #656d76;
+  margin-top: 3px;
+}
+.card {
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.form-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.form-table td {
+  padding: 10px 14px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.form-table tr:not(:last-child) td {
+  border-bottom: 1px solid #e7eaed;
+}
+.lbl {
+  width: 90px;
+  color: #24292f;
+  font-weight: 500;
+  user-select: none;
+}
+input[type=password] {
+  font-family: inherit;
+  font-size: 13px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f2328;
+}
+input[type=password]:focus {
+  outline: 2px solid #0969da;
+  outline-offset: -1px;
+  border-color: #0969da;
+}
+.actions-cell {
+  background: #ffffff;
+  padding: 12px 14px;
+}
+button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 16px;
+  cursor: pointer;
+  background: #24292f;
+  color: #ffffff;
+  border: 1px solid #24292f;
+  border-radius: 4px;
+}
+button:hover:not(:disabled) {
+  background: #323842;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+progress {
+  display: none;
+  width: 100%;
+  height: 6px;
+  margin-top: 14px;
+  accent-color: #24292f;
+}
+.st {
+  font-size: 12px;
+  color: #57606a;
+  margin-top: 8px;
+  min-height: 18px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}
+.note {
+  font-size: 12px;
+  color: #57606a;
+  margin-top: 8px;
+  line-height: 1.5;
+}
 </style>
 </head>
 <body>
-<h2>File Smuggling — Decoder</h2>
-<div class="ver">Reads part HTML files from a folder &nbsp;|&nbsp; No file size limit &nbsp;|&nbsp; Requires Chrome or Edge</div>
-<table border="0" style="background:#1abc9c">
-<tr>
-  <td>Password</td>
-  <td><input type="password" id="pw" placeholder="if the file was encrypted"></td>
-</tr>
-<tr>
-  <td colspan="2" style="padding:8px 10px 12px;">
-    <button id="btn" onclick="run()">Open Folder &amp; Decode</button>
-    <div class="note">
-      Pick the folder containing the <b>.part*.html</b> files.<br>
-      The decoder reads them directly — no browser-open needed, no RAM limit.<br>
-      The decoded file is saved automatically to the same folder.
-    </div>
-  </td>
-</tr>
-</table>
+
+<div class="header">
+  <h2>File Smuggling — Decoder</h2>
+  <div class="ver">Folder Extraction &bull; Negligible RAM Footprint &bull; Requires Chrome or Edge</div>
+</div>
+
+<div class="card">
+  <table class="form-table">
+    <tr>
+      <td class="lbl">Password</td>
+      <td><input type="password" id="pw" placeholder="Required if file was encrypted"></td>
+    </tr>
+    <tr>
+      <td colspan="2" class="actions-cell">
+        <button id="btn" onclick="run()">Open Folder &amp; Decode</button>
+        <div class="note">
+          Select the folder containing the <b>.part*.html</b> files.<br>
+          Parts are read as text streams directly from disk without DOM rendering.<br>
+          Reconstructed output will be saved into the same folder.
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+
 <progress id="prog" max="100" value="0"></progress>
 <div class="st" id="st"></div>
+
 <script>
 function fmtB(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';}
 function b64u8(b){const bin=atob(b),r=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)r[i]=bin.charCodeAt(i);return r;}

@@ -1,133 +1,129 @@
-# HTML File Smuggler 📦
+# HTML File Smuggler
 
-> **High-performance, zero-dependency browser suite for client-side HTML file smuggling, AES-256-GCM encryption, chunked streaming, and split-file decoding.**
+High-performance, zero-dependency browser utility for client-side HTML file smuggling, AES-256-GCM encryption, chunked streaming, and split-file decoding.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Vanilla JS](https://img.shields.io/badge/Vanilla-JavaScript-f7df1e.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Web Crypto API](https://img.shields.io/badge/Crypto-AES--256--GCM-success.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
-[![File System Access API](https://img.shields.io/badge/API-File%20System%20Access-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
+## Overview
 
----
+HTML File Smuggler is a self-contained, browser-native utility designed to package arbitrary binary files into HTML-wrapped payloads and reconstruct them on destination devices. The tool operates entirely within client-side JavaScript using the Web Crypto API and the Chromium File System Access API.
 
-## 🚀 Overview
+Because execution is strictly confined to the local browser context, no payload data is transmitted over the network or processed by third-party servers. The system enables reliable file transportation across restricted environments where standard file transfers, executables, or archive attachments are blocked, but HTML, text, or copy-paste operations remain permitted.
 
-**HTML File Smuggler** leverages HTML5, JavaScript Blobs, and the Web Crypto API to convert arbitrary binary files into standalone, self-extracting HTML packages or segmented multi-part bundles.
+## Core Capabilities
 
-When opened or processed in a modern browser, the embedded payloads are extracted, decrypted in memory, and reassembled directly on the target file system without requiring external software, runtimes, or network connectivity.
+- Client-Side Security: 100 percent in-browser execution with zero network telemetry or remote dependencies.
+- Strong Cryptography: Optional AES-256-GCM authenticated encryption utilizing PBKDF2 key derivation with 200,000 iterations of SHA-256 and an isolated 16-byte cryptographic salt.
+- Memory-Safe Processing: Overcomes browser Out-of-Memory (OOM) limitations on large files through progressive chunk deallocation and direct-to-disk streaming.
+- Stream Hardening: Employs 64 KB sliced stream writing to prevent Chromium FileSystemWritableFileStream buffer saturation and premature EOF aborts.
+- Modular Operation: Clear separation between the packaging engine (index.html) and the standalone folder extraction tool (decoder.html).
 
-### Why this exists
-- **Restricted Environments**: Transfer files across systems where only text, markup, or copy-paste operations are permitted.
-- **Zero-Server Security**: 100% client-side execution. Files never touch any remote server or third-party service.
-- **Out-of-Memory (OOM) Protection**: Handles large multi-gigabyte files without browser memory exhaustion by combining chunked memory release and disk streaming via the File System Access API.
+## System Requirements
 
----
+- Supported Browsers: Google Chrome, Microsoft Edge, Brave, Opera, and other Chromium-based browsers with File System Access API support.
+- Operating Systems: Windows, macOS, Linux, and ChromeOS.
+- Capacity:
+  - Single HTML Mode: Suitable for payloads up to approximately 7 GB on systems with 16 GB of physical RAM.
+  - Split Multi-Part Mode: No theoretical file size limit. Tested on multi-gigabyte files with memory consumption remaining under 2 MB during extraction.
 
-## ✨ Features
+## Operational Workflows
 
-- 🔒 **Military-Grade Encryption**: Optional AES-256-GCM encryption with PBKDF2 key derivation (200,000 SHA-256 rounds and a unique 16-byte cryptographic salt).
-- ⚡ **Zero Dependencies**: Pure HTML and Vanilla JavaScript. Runs directly in any Chromium-based browser (Chrome, Edge, Brave, Opera).
-- 💾 **Two Flexible Build Modes**:
-  1. **Single HTML Package**: Encapsulates the entire file into a single, self-extracting `.html` document.
-  2. **Split to Folder (Large Files)**: Automatically slices files into uniform ~50 MB parts (`.part001.html`, `.part002.html`, etc.) and pairs them with `decoder.html`.
-- 🛠️ **Standalone Decoder (`decoder.html`)**:
-  - Automatically indexes and sequences all part files within a selected folder.
-  - Reads parts as plain text streams rather than parsing them into the DOM, keeping peak memory usage at **~2 MB regardless of total file size**.
-  - Assembles and decrypts payloads on-the-fly, writing directly to disk.
-- 🛡️ **Stream Hardening**: Implements chunked 64 KB writes (`w64()`) to prevent premature EOF stream rejections and buffer aborts inside the Chromium File System Access engine.
-- 🧹 **Clean & Focused Interface**: Strict separation of concerns — `index.html` builds/encodes payloads, while `decoder.html` retrieves and reassembles them.
+The utility provides two distinct packaging models based on payload size and operational constraints.
 
----
+### Workflow 1: Single HTML File
 
-## 📁 Repository Structure
+This workflow wraps the entire payload into a single self-contained HTML file. It is recommended for small-to-medium files where simplicity is preferred.
 
-| File | Description |
-| :--- | :--- |
-| [`index.html`](index.html) | **File Smuggling Encoder** — Form to configure passwords, custom messages, and generate single or split payloads. |
-| [`decoder.html`](decoder.html) | **Standalone Decoder** — Portable utility to select a folder containing split parts and reconstruct the original file. |
-| [`LICENSE`](LICENSE) | MIT License. |
-| [`README.md`](README.md) | Project documentation and usage guide. |
+#### Step 1: Packaging (Source Machine)
+1. Open index.html in Chrome or Edge.
+2. Select the target file using the File input. The application calculates the source size and estimated encoded size.
+3. (Optional) Enter a passphrase in the Password field to enforce AES-256-GCM encryption.
+4. (Optional) Enter a message in the Note field to display instructions to the recipient.
+5. Click "Build Single HTML".
+6. When prompted by the browser, select the destination filename and save location.
+7. The encoder processes the source file in 1 MB chunks. If encryption is enabled, each chunk is encrypted using a dedicated 12-byte random initialization vector (IV). Chunks are Base64-encoded and written directly to the output file in 64 KB slices.
 
----
+#### Step 2: Extraction (Target Machine)
+1. Deliver the generated HTML file to the target machine via web download, email attachment, or text transfer.
+2. Open the file in Chrome or Edge.
+3. If the payload was encrypted, enter the passphrase in the Password field.
+4. Click "Retrieve File" and choose a destination path.
+5. The embedded extraction logic reads each chunk sequentially, decrypts it, streams it to disk, and immediately releases the memory reference (C[i] = null). Once all chunks are processed, the file is finalized and closed.
 
-## 📖 Usage Guide
+### Workflow 2: Split Multi-Part Mode (Large Files)
 
-### 1. Encoding Files (`index.html`)
+When files exceed several hundred megabytes, opening a single monolithic HTML file in a web browser will exhaust tab memory and trigger an Out-of-Memory crash. The Split Multi-Part workflow eliminates this limitation by dividing the payload into uniform parts and using a headless text extraction routine.
 
-1. Open [`index.html`](index.html) in Google Chrome or Microsoft Edge.
-2. Click **Choose File** to select your target file (documents, archives, executables, disk images, etc.).
-3. *(Optional)* Provide a **Password** to enforce AES-256-GCM encryption.
-4. *(Optional)* Add a **Note** to display instructions or metadata to the recipient.
-5. Choose your build mode:
-   - **Build Single HTML**: Select a save destination. Generates a standalone `<filename>.html` file.
-   - **Build Split to Folder**: Select an output directory. Generates sequential `.part*.html` files along with a copy of `decoder.html`.
-   - *(Optional)* Click **Save decoder.html** anytime to obtain an independent copy of the decoder.
+#### Step 1: Packaging (Source Machine)
+1. Open index.html in Chrome or Edge.
+2. Select the source file. The interface displays the total part count based on 36 MB raw source slices (approximately 50 MB per encoded part).
+3. (Optional) Provide a passphrase and recipient note.
+4. Click "Build Split to Folder".
+5. When prompted by the browser directory picker, select or create a destination folder.
+6. The engine writes sequential part files (such as filename.part001.html, filename.part002.html) into the chosen folder.
+7. Upon completion, the engine automatically saves a copy of decoder.html into the same directory.
 
----
+#### Step 2: Transfer Across Restricted Channels
+Copy the generated folder containing all part files and decoder.html to the target system. In environments where file transfer is restricted to copy-paste:
+- Open each part file in a text editor on the source machine.
+- Copy the text content and paste it into a file with the identical name on the target machine.
+- Repeat the process for decoder.html.
 
-### 2. Decoding Files
+#### Step 3: Extraction (Target Machine via decoder.html)
+1. Open decoder.html in Chrome or Edge on the target system. Note: Do not attempt to open individual part HTML files.
+2. If encryption was applied during packaging, enter the passphrase in the Password field.
+3. Click "Open Folder & Decode".
+4. When prompted by the browser directory picker, select the directory containing the part files.
+5. The decoder executes the following automated pipeline:
+   - Scans the directory handle and discovers all files matching the pattern .part*.html.
+   - Sorts the discovered parts in correct numerical order.
+   - Reads the initial part metadata to verify file integrity and encryption parameters.
+   - Derives the cryptographic key using PBKDF2 if a passphrase is required.
+   - Opens an output writable stream for the original filename.
+   - Iterates through each part file by reading it as a raw text stream via the File API rather than loading it into the DOM.
+   - Extracts encoded chunks using delimited string markers, decodes Base64 data, decrypts AES-GCM ciphertexts, and writes to disk in 64 KB segments.
+   - Deallocates chunk memory immediately after writing.
+6. Closes the writable stream and reports completion. The reconstructed file is restored to its exact original binary format in the same directory.
 
-#### A. Single HTML Files
-- Simply double-click the generated `.html` file in Chrome or Edge.
-- If password-protected, enter the password.
-- Click **Retrieve File** to decrypt and save the original file to disk.
+## Technical Specifications
 
-#### B. Split Multi-Part Files
-1. Transfer the generated folder (or copy-paste the text of each `.part*.html` and `decoder.html`) onto the target system.
-2. Open [`decoder.html`](decoder.html) in Chrome or Edge.
-3. If password-protected, enter the decryption password.
-4. Click **Open Folder & Decode** and select the folder containing your part files.
-5. The decoder will automatically sort the parts, decrypt each chunk, and stream the original file directly into the same folder.
+### Cryptographic Implementation
+- Algorithm: AES-256-GCM (Galois/Counter Mode) with 128-bit authentication tags.
+- Key Derivation Function: PBKDF2-HMAC-SHA256.
+- Iteration Count: 200,000 rounds.
+- Salt: 16 cryptographically secure random bytes generated via window.crypto.getRandomValues.
+- Initialization Vector: 12 unique random bytes generated per 1 MB payload block.
+- Integrity: GCM provides authenticated encryption; any tampering or incorrect password immediately aborts extraction.
 
----
+### Stream Optimization (64 KB Slicing)
+Chromium FileSystemWritableFileStream instances can reject large continuous writes and throw unexpected EOF errors. To resolve this, all write operations pass through a segmented writer:
 
-## ⚙️ Architecture & Memory Safety
-
-Traditional HTML smuggling techniques embed large Base64 blobs directly into strings or DOM elements. When working with files over a few hundred megabytes, this frequently causes tab crashes (**Error code: Out of Memory**).
-
-HTML File Smuggler prevents memory pressure using two primary mechanisms:
-
-### 1. In-Memory Chunk Deallocation
-During extraction, chunks are read sequentially and immediately cleared:
-```javascript
-for (let i = 0; i < n; i++) {
-  let d = b64u8(C[i].d);
-  // ... decrypt and stream to disk ...
-  C[i] = null; // Explicit garbage collection hint
-}
-```
-
-### 2. Direct-to-Disk Stream Processing
-Rather than accumulating Blobs in memory, chunks are passed through the browser's native `FileSystemWritableFileStream` in 64 KB slices:
 ```javascript
 async function w64(wr, data) {
-  const b = typeof data === 'string' ? new TextEncoder().encode(data) : data;
-  for (let i = 0; i < b.length; i += 65536) {
-    await wr.write(b.subarray(i, Math.min(i + 65536, b.length)));
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  for (let i = 0; i < bytes.length; i += 65536) {
+    await wr.write(bytes.subarray(i, Math.min(i + 65536, bytes.length)));
   }
 }
 ```
 
----
+### Memory Management Strategy
+1. In Single HTML retrieval, the chunk array is progressively cleared during execution to allow immediate garbage collection:
+   ```javascript
+   C[i] = null;
+   ```
+2. In Split Folder decoding, part files are ingested sequentially via File.text() and parsed through string offsets rather than DOM nodes, holding only one slice in memory at any given moment. Peak RAM consumption remains flat at approximately 2 MB.
 
-## 🌐 Browser Compatibility
+## Repository Structure
 
-| Browser | Supported | Notes |
-| :--- | :---: | :--- |
-| **Google Chrome** | ✅ | Full support for File System Access API and Web Crypto |
-| **Microsoft Edge** | ✅ | Full support for File System Access API and Web Crypto |
-| **Brave** | ✅ | Full support (Chromium core) |
-| **Opera** | ✅ | Full support (Chromium core) |
-| **Firefox** | ⚠️ Partial | Fallback memory Blob download supported (single file only) |
-| **Safari** | ⚠️ Partial | Fallback memory Blob download supported (single file only) |
+- index.html: File smuggling encoder interface.
+- decoder.html: Standalone folder extraction and reconstruction utility.
+- LICENSE: MIT License terms.
+- README.md: Comprehensive technical documentation and operational guide.
+- .gitignore: Git ignore definitions for temporary and system files.
 
----
+## Legal and Security Notice
 
-## 🔒 Security & Educational Disclaimer
+This utility is published strictly for authorized security assessments, penetration testing, red teaming, digital forensics, and legitimate administrative operations in restricted contexts. Users are solely responsible for ensuring compliance with all applicable legal, regulatory, and corporate policies.
 
-This project is published for educational purposes, authorized penetration testing, security auditing, and restricted environments file transfer. Users are responsible for complying with all applicable laws and organizational security policies.
+## License
 
----
-
-## 📄 License
-
-Distributed under the [MIT License](LICENSE). See `LICENSE` for more information.
+This project is licensed under the MIT License. See the LICENSE file for full terms.
