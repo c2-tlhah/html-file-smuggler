@@ -1,5 +1,6 @@
 # HTML File Smuggler
 
+[![Author: tlha](https://img.shields.io/badge/Author-tlha-111111?logo=github&logoColor=white)](https://github.com/c2-tlhah)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Vanilla JS](https://img.shields.io/badge/Vanilla-JavaScript-f7df1e?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![Web Crypto API](https://img.shields.io/badge/Security-AES--256--GCM-1abc9c?logo=gnupg&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
@@ -125,6 +126,19 @@ async function w64(wr, data) {
 - LICENSE: MIT License terms.
 - README.md: Comprehensive technical documentation and operational guide.
 - .gitignore: Git ignore definitions for temporary and system files.
+
+## Author & Maintainer
+
+- Developer: [tlha](https://github.com/c2-tlhah) ([@c2-tlhah](https://github.com/c2-tlhah))
+- Bio: Innovating with data, driven by intelligence.
+- GitHub: [https://github.com/c2-tlhah](https://github.com/c2-tlhah)
+
+## Acknowledgements & Credits
+
+- Concept and foundational PoC inspiration: [Eddie Chu](https://github.com/eddiechu) ([File-Smuggling](https://github.com/eddiechu/File-Smuggling))
+- Threat modeling & taxonomy: MITRE ATT&CK [T1027.006 (HTML Smuggling)](https://attack.mitre.org/techniques/T1027/006/)
+- Cryptographic specifications: W3C [Web Cryptography API](https://www.w3.org/TR/WebCryptoAPI/) (AES-256-GCM, PBKDF2)
+- Local filesystem streaming: W3C [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
 
 ## Legal and Security Notice
 

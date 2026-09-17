@@ -70,7 +70,8 @@
   <button id="b3" onclick="saveDecoder()">Save decoder.html</button>
   <br><br>
   <b>Single HTML</b>: one self-contained file. On retrieval, the HTML loads into browser RAM (~1.4&times; file size). Safe up to ~7 GB on a 16 GB machine.<br>
-  <b>Split to Folder</b>: parts ~50 MB each — safe to decode on any machine. Run decoder.html on target.
+  <b>Split to Folder</b>: parts ~50 MB each — safe to decode on any machine. Run decoder.html on target.<br><br>
+  Developed by <a href="https://github.com/c2-tlhah" target="_blank" style="color:#111;text-decoration:none;font-weight:bold;">tlha (@c2-tlhah)</a>
 </div>
 
 <script>
@@ -291,6 +292,10 @@ ${BASE_CSS}
 </table>
 <progress id="prog" max="100" value="0"></progress>
 <div class="st" id="st"></div>
+<hr style="border:none;border-top:1px solid #ccc;margin:22px 0 14px;">
+<div style="font-size:11px;color:#888;">
+  Developed by <a href="https://github.com/c2-tlhah" target="_blank" style="color:#111;text-decoration:none;font-weight:bold;">tlha (@c2-tlhah)</a>
+</div>
 <script>
 ${RET_JS}
 const META=${metaJSON};
@@ -361,6 +366,10 @@ ${BASE_CSS}
   Open <b>decoder.html</b> (in the same folder) to decode all parts and retrieve the file.</div>
 </td></tr>
 </table>
+<hr style="border:none;border-top:1px solid #ccc;margin:22px 0 14px;">
+<div style="font-size:11px;color:#888;">
+  Developed by <a href="https://github.com/c2-tlhah" target="_blank" style="color:#111;text-decoration:none;font-weight:bold;">tlha (@c2-tlhah)</a>
+</div>
 <script>
 /*SM*/const M=${pMetaJSON};/*EM*/
 /*SD*/const C=[`;
@@ -400,6 +409,10 @@ ${BASE_CSS}
 </table>
 <progress id="prog" max="100" value="0"></progress>
 <div class="st" id="st"></div>
+<hr style="border:none;border-top:1px solid #ccc;margin:22px 0 14px;">
+<div style="font-size:11px;color:#888;">
+  Developed by <a href="https://github.com/c2-tlhah" target="_blank" style="color:#111;text-decoration:none;font-weight:bold;">tlha (@c2-tlhah)</a>
+</div>
 <script>
 function fmtB(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';}
 function b64u8(b){const bin=atob(b),r=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)r[i]=bin.charCodeAt(i);return r;}

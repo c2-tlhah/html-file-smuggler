@@ -44,6 +44,11 @@
 <progress id="prog" max="100" value="0"></progress>
 <div class="st" id="st"></div>
 
+<hr style="border:none;border-top:1px solid #ccc;margin:22px 0 14px;">
+<div style="font-size:11px;color:#888;">
+  Developed by <a href="https://github.com/c2-tlhah" target="_blank" style="color:#111;text-decoration:none;font-weight:bold;">tlha (@c2-tlhah)</a>
+</div>
+
 <script>
 function fmtB(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';}
 function b64u8(b){const bin=atob(b),r=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)r[i]=bin.charCodeAt(i);return r;}
