@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>File Smuggling — Decoder</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;padding:24px;background:#fff;max-width:500px;}
+h2{margin:0 0 2px;font-size:16px;} .ver{font-size:11px;color:#999;margin-bottom:20px;}
+table{border-spacing:0;width:100%;} td{padding:6px 10px;font-size:13px;vertical-align:middle;}
+td:first-child{width:90px;color:#333;}
+input[type=password]{font-family:Arial;font-size:13px;width:100%;padding:3px 6px;}
+button{font-family:Arial;font-size:13px;padding:4px 14px;cursor:pointer;background:#1a7a60;color:#fff;border:1px solid #1a7a60;border-radius:2px;}
+button:hover:not(:disabled){background:#166952;} button:disabled{opacity:.4;cursor:default;}
+progress{display:none;width:100%;height:10px;margin-top:10px;}
+.st{font-size:11px;color:#444;margin-top:6px;min-height:16px;}
+.note{font-size:11px;color:#555;margin-top:8px;line-height:1.6;}
+</style>
+</head>
+<body>
+<h2>File Smuggling — Decoder</h2>
+<div class="ver">Reads part HTML files from a folder &nbsp;|&nbsp; No file size limit &nbsp;|&nbsp; Requires Chrome or Edge</div>
+<table border="0" style="background:#1abc9c">
+<tr>
+  <td>Password</td>
+  <td><input type="password" id="pw" placeholder="if the file was encrypted"></td>
+</tr>
+<tr>
+  <td colspan="2" style="padding:8px 10px 12px;">
+    <button id="btn" onclick="run()">Open Folder &amp; Decode</button>
+    <div class="note">
+      Pick the folder containing the <b>.part*.html</b> files.<br>
+      The decoder reads them directly — no browser-open needed, no RAM limit.<br>
+      The decoded file is saved automatically to the same folder.
+    </div>
+  </td>
+</tr>
+</table>
+<progress id="prog" max="100" value="0"></progress>
+<div class="st" id="st"></div>
+<script>
+function fmtB(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';}
+function b64u8(b){const bin=atob(b),r=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)r[i]=bin.charCodeAt(i);return r;}
+function st(m){document.getElementById('st').textContent=m;}
+function pr(v){const p=document.getElementById('prog');p.style.display='block';p.value=v;}
+function bz(v){document.getElementById('btn').disabled=v;}
+function xM(h){try{const s='/*SM*/const M=',e=';/*EM*/';const si=h.indexOf(s)+s.length,ei=h.indexOf(e,si);if(si<s.length||ei<0)return null;return JSON.parse(h.substring(si,ei));}catch{return null;}}
+function xC(h){try{const s='/*SD*/const C=[',e='];/*ED*/';const si=h.indexOf(s)+s.length-1,ei=h.indexOf(e,si)+1;if(si<s.length-1||ei<1)return null;return JSON.parse(h.substring(si,ei));}catch{return null;}}
+async function dk(pw,salt){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+}
+async function run(){
+  if(!('showDirectoryPicker' in window)){st('Requires Chrome or Edge.');return;}
+  bz(true);pr(0);st('Pick the folder with part HTML files...');
+  let dir;
+  try{dir=await window.showDirectoryPicker({mode:'readwrite',startIn:'desktop'});}
+  catch{st('Cancelled.');bz(false);return;}
+  try{
+    st('Scanning folder...');
+    const parts=[];
+    for await(const[name,handle]of dir.entries()){
+      if(handle.kind!=='file')continue;
+      const m=name.match(/\.part(\d+)\.html$/i);
+      if(m)parts.push({name,handle,num:parseInt(m[1])});
+    }
+    parts.sort((a,b)=>a.num-b.num);
+    if(!parts.length){st('No .part*.html files found in this folder.');bz(false);return;}
+    st('Reading metadata...');
+    const t0=await(await parts[0].handle.getFile()).text();
+    const meta=xM(t0);
+    if(!meta){st('Cannot read metadata — invalid part file.');bz(false);return;}
+    const pw=document.getElementById('pw').value;
+    if(meta.enc&&!pw){st('File is encrypted — enter the password first.');bz(false);return;}
+    let key=null;
+    if(meta.enc){st('Deriving key...');key=await dk(pw,b64u8(meta.salt));}
+    st('Creating output: '+meta.origName+'...');
+    const oh=await dir.getFileHandle(meta.origName,{create:true});
+    const wr=await oh.createWritable();
+    let done=0,est=0;
+    try{
+      for(let pi=0;pi<parts.length;pi++){
+        st('Part '+(pi+1)+'/'+parts.length+': reading...');
+        const txt=pi===0?t0:await(await parts[pi].handle.getFile()).text();
+        const chunks=xC(txt);
+        if(!chunks)throw new Error('Cannot read data from part '+(pi+1));
+        if(!est)est=parts.length*chunks.length;
+        for(let ci=0;ci<chunks.length;ci++){
+          let d=b64u8(chunks[ci].d);
+          if(meta.enc){
+            try{d=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u8(chunks[ci].iv)},key,d));}
+            catch{throw new Error('Decryption failed — wrong password or corrupted part '+(pi+1));}
+          }
+          for(let k=0;k<d.length;k+=65536)await wr.write(d.subarray(k,Math.min(k+65536,d.length)));
+          chunks[ci]=null;done++;
+          pr(Math.round((done/Math.max(est,done+1))*99));
+          st('Part '+(pi+1)+'/'+parts.length+' — chunk '+(ci+1)+'/'+chunks.length);
+          await new Promise(r=>setTimeout(r,0));
+        }
+      }
+      await wr.close();
+      pr(100);st('Done. Saved: '+meta.origName+' ('+fmtB(meta.totalSize)+')');
+    }catch(e){try{await wr.abort();}catch(_){}throw e;}
+  }catch(e){st('Error: '+e.message);console.error(e);}
+  bz(false);
+}
+</script>
+</body>
+</html>

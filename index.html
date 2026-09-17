@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>File Smuggling — Encoder</title>
+<style>
+  body     { font-family: Arial, Helvetica, sans-serif; padding: 24px; background: #fff; max-width: 560px; }
+  h2       { margin: 0 0 2px; font-size: 16px; }
+  .version { font-size: 11px; color: #999; margin-bottom: 20px; }
+  table    { border-spacing: 0; width: 100%; }
+  td       { padding: 6px 10px; font-size: 13px; vertical-align: middle; }
+  td:first-child { width: 90px; color: #333; }
+  input[type=file]     { font-family: Arial; font-size: 13px; }
+  input[type=text],
+  input[type=password] { font-family: Arial; font-size: 13px; width: 100%; padding: 3px 6px; }
+  .actions { padding: 10px 10px 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  button   { font-family: Arial; font-size: 13px; padding: 4px 14px; cursor: pointer; background: #fff; border: 1px solid #aaa; border-radius: 2px; }
+  button:hover:not(:disabled) { background: #f0f0f0; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.primary { background: #1a7a60; color: #fff; border-color: #1a7a60; }
+  button.primary:hover:not(:disabled) { background: #166952; }
+  progress { display: none; width: 100%; height: 10px; margin-top: 10px; }
+  .st      { font-size: 11px; color: #444; margin-top: 6px; min-height: 16px; }
+  .file-est{ font-size: 11px; color: #555; padding: 4px 10px 0; }
+  hr       { border: none; border-top: 1px solid #ddd; margin: 22px 0 16px; }
+  .foot    { font-size: 11px; color: #888; }
+  .foot button { font-size: 11px; padding: 2px 10px; }
+</style>
+</head>
+<body>
+
+<h2>File Smuggling — Encoder</h2>
+<div class="version">v2.3 &nbsp;|&nbsp; AES-256-GCM &nbsp;|&nbsp; Requires Chrome or Edge</div>
+
+<table border="0" style="background:#1abc9c">
+  <tr>
+    <td>File</td>
+    <td><input type="file" id="bfile" onchange="onFile()"></td>
+  </tr>
+  <tr>
+    <td>Password</td>
+    <td><input type="password" id="bpw" placeholder="optional — enables AES-256-GCM encryption"></td>
+  </tr>
+  <tr>
+    <td>Note</td>
+    <td><input type="text" id="bmsg" placeholder="optional message shown to recipient"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <div class="file-est" id="est"></div>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <div class="actions">
+        <button class="primary" id="b1" onclick="buildSingle()">Build Single HTML</button>
+        <button id="b2" onclick="buildSplit()">Build Split to Folder</button>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<progress id="bp" max="100" value="0"></progress>
+<div class="st" id="bs"></div>
+
+<hr>
+
+<div class="foot">
+  Need a decoder for the target machine?&nbsp;
+  <button id="b3" onclick="saveDecoder()">Save decoder.html</button>
+  <br><br>
+  <b>Single HTML</b>: one self-contained file. On retrieval, the HTML loads into browser RAM (~1.4× file size). Safe up to ~7 GB on a 16 GB machine.<br>
+  <b>Split to Folder</b>: parts ~50 MB each — safe to decode on any machine. Run decoder.html on target.
+</div>
+
+<script>
+'use strict';
+
+const PROC  = 1  * 1024 * 1024;
+const SPART = 36 * 1024 * 1024;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmtB = n => n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';
+const pad   = (n,l) => String(n).padStart(l,'0');
+const escH  = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function u8b64(u){let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s);}
+function b64u8(b){const bin=atob(b),r=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)r[i]=bin.charCodeAt(i);return r;}
+
+async function deriveKey(pw,salt,use){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,use);
+}
+async function encChunk(key,data){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,data));
+  return{iv,ct};
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const bs = m => $('bs').textContent = m;
+const bp = v => { $('bp').style.display='block'; $('bp').value=v; };
+const bbz = v => ['b1','b2','b3'].forEach(id => $(id).disabled=v);
+
+function onFile(){
+  const f=$('bfile').files[0]; if(!f) return;
+  const est=f.size*1.37, parts=Math.ceil(f.size/SPART)||1;
+  $('est').textContent = fmtB(f.size)+' source → ~'+fmtB(est)+' encoded'
+    +(parts>1?' (split: '+parts+' parts × ~'+fmtB(est/parts)+' each)':' (fits in single file)');
+}
+
+// Write to FS API in 64 KB pieces — prevents EOF errors on large writes
+async function w64(wr,data){
+  const b=typeof data==='string'?new TextEncoder().encode(data):data;
+  for(let i=0;i<b.length;i+=65536) await wr.write(b.subarray(i,Math.min(i+65536,b.length)));
+}
+
+async function openSave(name){
+  try{ const h=await window.showSaveFilePicker({suggestedName:name}); return h.createWritable(); }
+  catch{ return null; }
+}
+
+// ── Build Single HTML ─────────────────────────────────────────────────────────
+async function buildSingle(){
+  const fi=$('bfile'); if(!fi.files.length){bs('Choose a file first.');return;}
+  if(!('showSaveFilePicker' in window)){bs('Requires Chrome or Edge.');return;}
+  const file=fi.files[0], pw=$('bpw').value, msg=$('bmsg').value, enc=pw.length>0;
+  bbz(true); bp(0); bs('Choose where to save the HTML file...');
+  const wr=await openSave(file.name+'.html');
+  if(!wr){bs('Cancelled.');bbz(false);return;}
+  try{
+    let key=null,saltB64='';
+    if(enc){
+      bs('Deriving key...');
+      const salt=crypto.getRandomValues(new Uint8Array(16));
+      saltB64=u8b64(salt); key=await deriveKey(pw,salt,['encrypt']);
+    }
+    const meta=JSON.stringify({name:file.name,size:file.size,enc,salt:saltB64});
+    const total=Math.ceil(file.size/PROC)||1;
+    await w64(wr, singleHead(file.name,file.size,enc,meta,msg));
+    let offset=0,i=0;
+    while(offset<file.size){
+      const end=Math.min(offset+PROC,file.size);
+      const raw=new Uint8Array(await file.slice(offset,end).arrayBuffer());
+      let data=raw,ivB64='';
+      if(enc){const{iv,ct}=await encChunk(key,raw);ivB64=u8b64(iv);data=ct;}
+      await w64(wr,(i===0?'':',')+JSON.stringify({d:u8b64(data),iv:ivB64}));
+      offset=end; i++;
+      bp(Math.round((i/total)*95));
+      bs('Encoding '+i+' / '+total+' chunks...');
+      await new Promise(r=>setTimeout(r,0));
+    }
+    await w64(wr,singleFoot());
+    await wr.close();
+    bp(100); bs('Done. Saved: '+file.name+'.html');
+  }catch(e){try{await wr.abort();}catch(_){} bs('Error: '+e.message); console.error(e);}
+  bbz(false);
+}
+
+// ── Build Split to Folder ─────────────────────────────────────────────────────
+async function buildSplit(){
+  const fi=$('bfile'); if(!fi.files.length){bs('Choose a file first.');return;}
+  if(!('showDirectoryPicker' in window)){bs('Requires Chrome or Edge.');return;}
+  const file=fi.files[0], pw=$('bpw').value, msg=$('bmsg').value, enc=pw.length>0;
+  const totalParts=Math.ceil(file.size/SPART)||1;
+  bbz(true); bp(0); bs('Choose output folder...');
+  let dir;
+  try{dir=await window.showDirectoryPicker({mode:'readwrite',startIn:'desktop'});}
+  catch{bs('Cancelled.');bbz(false);return;}
+  try{
+    let key=null,saltB64='';
+    if(enc){
+      bs('Deriving key...');
+      const salt=crypto.getRandomValues(new Uint8Array(16));
+      saltB64=u8b64(salt); key=await deriveKey(pw,salt,['encrypt']);
+    }
+    for(let p=1;p<=totalParts;p++){
+      const start=(p-1)*SPART, end=Math.min(p*SPART,file.size);
+      const pTotal=Math.ceil((end-start)/PROC)||1;
+      const pName=file.name+'.part'+pad(p,3);
+      const pMeta=JSON.stringify({origName:file.name,totalSize:file.size,enc,salt:saltB64,parts:totalParts});
+      bs('Part '+p+'/'+totalParts+': writing '+pName+'.html...');
+      const fh=await dir.getFileHandle(pName+'.html',{create:true});
+      const wr=await fh.createWritable();
+      try{
+        await w64(wr,partHead(file.name,file.size,enc,pMeta,msg,p,totalParts));
+        let offset=start,ci=0;
+        while(offset<end){
+          const sliceEnd=Math.min(offset+PROC,end);
+          const raw=new Uint8Array(await file.slice(offset,sliceEnd).arrayBuffer());
+          let data=raw,ivB64='';
+          if(enc){const{iv,ct}=await encChunk(key,raw);ivB64=u8b64(iv);data=ct;}
+          await w64(wr,(ci===0?'':',')+JSON.stringify({d:u8b64(data),iv:ivB64}));
+          offset=sliceEnd; ci++;
+          bp(Math.round(((p-1+ci/pTotal)/totalParts)*90));
+          bs('Part '+p+'/'+totalParts+' — chunk '+ci+'/'+pTotal);
+          await new Promise(r=>setTimeout(r,0));
+        }
+        await w64(wr,partFoot());
+        await wr.close();
+      }catch(e){try{await wr.abort();}catch(_){} throw e;}
+    }
+    bs('Saving decoder.html...');
+    const dfh=await dir.getFileHandle('decoder.html',{create:true});
+    const dwr=await dfh.createWritable();
+    try{await w64(dwr,decoderHTML());await dwr.close();}
+    catch(e){try{await dwr.abort();}catch(_){} throw e;}
+    bp(100); bs('Done. '+totalParts+' part(s) + decoder.html saved.');
+  }catch(e){bs('Error: '+e.message); console.error(e);}
+  bbz(false);
+}
+
+// ── Save decoder.html standalone ──────────────────────────────────────────────
+async function saveDecoder(){
+  if(!('showSaveFilePicker' in window)){bs('Requires Chrome or Edge.');return;}
+  bbz(true); bs('Choose where to save decoder.html...');
+  const wr=await openSave('decoder.html');
+  if(!wr){bs('Cancelled.');bbz(false);return;}
+  try{await w64(wr,decoderHTML());await wr.close();bs('Saved: decoder.html');}
+  catch(e){try{await wr.abort();}catch(_){} bs('Error: '+e.message);}
+  bbz(false);
+}
+
+// ── String marker helpers for extraction ──────────────────────────────────────
+function xMeta(html){
+  try{
+    const s='/*SM*/const M=',e=';/*EM*/';
+    const si=html.indexOf(s)+s.length,ei=html.indexOf(e,si);
+    if(si<s.length||ei<0)return null;
+    return JSON.parse(html.substring(si,ei));
+  }catch{return null;}
+}
+function xChunks(html){
+  try{
+    const s='/*SD*/const C=[',e='];/*ED*/';
+    const si=html.indexOf(s)+s.length-1;   // points at '['
+    const ei=html.indexOf(e,si)+1;          // points just after ']'
+    if(si<s.length-1||ei<1)return null;
+    return JSON.parse(html.substring(si,ei));
+  }catch{return null;}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HTML TEMPLATES
+// ═══════════════════════════════════════════════════════════════════════════════
+const BASE_CSS = `<style>
+body{font-family:Arial,Helvetica,sans-serif;padding:24px;background:#fff;max-width:500px;}
+h2{margin:0 0 2px;font-size:16px;} .ver{font-size:11px;color:#999;margin-bottom:20px;}
+table{border-spacing:0;width:100%;} td{padding:6px 10px;font-size:13px;vertical-align:middle;}
+td:first-child{width:90px;color:#333;}
+input[type=password]{font-family:Arial;font-size:13px;width:100%;padding:3px 6px;}
+button{font-family:Arial;font-size:13px;padding:4px 14px;cursor:pointer;background:#1a7a60;color:#fff;border:1px solid #1a7a60;border-radius:2px;}
+button:hover:not(:disabled){background:#166952;} button:disabled{opacity:.4;cursor:default;}
+progress{display:none;width:100%;height:10px;margin-top:10px;}
+.st{font-size:11px;color:#444;margin-top:6px;min-height:16px;}
+.note{font-size:11px;color:#555;margin-top:8px;line-height:1.6;}
+</style>`;
+
+// Retrieve JS helpers (embedded in single + part HTML pages)
+const RET_JS = `
+function fmtB(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';}
+function b64u8(b){const bin=atob(b),r=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)r[i]=bin.charCodeAt(i);return r;}
+function st(m){document.getElementById('st').textContent=m;}
+function pr(v){const p=document.getElementById('prog');p.style.display='block';p.value=v;}
+function bz(v){document.getElementById('btn').disabled=v;}
+async function dk(pw,salt){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+}`;
+
+// ── Single retrieval HTML ─────────────────────────────────────────────────────
+function singleHead(name,size,enc,metaJSON,msg){
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>${escH(name)}</title>
+${BASE_CSS}
+</head>
+<body>
+<h2>File Smuggling — Retrieve</h2>
+<div class="ver">${escH(name)} &nbsp;|&nbsp; ${fmtB(size)}${enc?' &nbsp;|&nbsp; AES-256-GCM':''}</div>
+<table border="0" style="background:#1abc9c">
+<tr><td colspan="2">
+  ${msg?'<b>Note:</b> '+escH(msg)+'<br><br>':''}
+  ${enc?'Password: <input type="password" id="pw" placeholder="Enter password"><br><br>':''}
+  <button id="btn" onclick="retrieve()">Retrieve File</button>
+  <div class="note">
+    ${enc?'Enter the password and click Retrieve.':'Click Retrieve to download the file.'}
+  </div>
+</td></tr>
+</table>
+<progress id="prog" max="100" value="0"></progress>
+<div class="st" id="st"></div>
+<script>
+${RET_JS}
+const META=${metaJSON};
+const C=[`;
+}
+
+function singleFoot(){
+  return `];
+async function retrieve(){
+  const pw=META.enc?((document.getElementById('pw')||{value:''}).value):'';
+  if(META.enc&&!pw){st('Enter the password first.');return;}
+  bz(true);pr(0);st('Starting...');
+  try{
+    let key=null;
+    if(META.enc){st('Deriving key...');key=await dk(pw,b64u8(META.salt));}
+    let wr=null,col=[];
+    if('showSaveFilePicker' in window){
+      let h;try{h=await window.showSaveFilePicker({suggestedName:META.name});}
+      catch{st('Cancelled.');bz(false);return;}
+      wr=await h.createWritable();
+    }
+    const n=C.length;
+    try{
+      for(let i=0;i<n;i++){
+        let d=b64u8(C[i].d);
+        if(META.enc){
+          try{d=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u8(C[i].iv)},key,d));}
+          catch{throw new Error('Wrong password or corrupted data at chunk '+(i+1));}
+        }
+        if(wr){for(let k=0;k<d.length;k+=65536)await wr.write(d.subarray(k,Math.min(k+65536,d.length)));}
+        else col.push(d);
+        C[i]=null;
+        pr(Math.round(((i+1)/n)*90));
+        st('Chunk '+(i+1)+'/'+n+'...');
+        await new Promise(r=>setTimeout(r,0));
+      }
+      if(wr){await wr.close();pr(100);st('Saved: '+META.name);}
+      else{
+        st('Assembling...');
+        const blob=new Blob(col,{type:'application/octet-stream'});col.length=0;
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');a.href=url;a.download=META.name;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+        URL.revokeObjectURL(url);pr(100);st('Downloaded: '+META.name);
+      }
+    }catch(e){if(wr){try{await wr.abort();}catch(_){}}throw e;}
+  }catch(e){st('Error: '+e.message);console.error(e);}
+  bz(false);
+}
+<\/script>
+</body></html>`;
+}
+
+// ── Split part HTML ───────────────────────────────────────────────────────────
+function partHead(origName,totalSize,enc,pMetaJSON,msg,partNum,totalParts){
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>${escH(origName)} (Part ${partNum}/${totalParts})</title>
+${BASE_CSS}
+</head>
+<body>
+<h2>File Smuggling — Part ${partNum} of ${totalParts}</h2>
+<div class="ver">${escH(origName)} &nbsp;|&nbsp; ${fmtB(totalSize)}</div>
+<table border="0" style="background:#1abc9c">
+<tr><td colspan="2">
+  ${msg?'<b>Note:</b> '+escH(msg)+'<br><br>':''}
+  <div class="note">This is part ${partNum} of ${totalParts}.<br>
+  Open <b>decoder.html</b> (in the same folder) to decode all parts and retrieve the file.</div>
+</td></tr>
+</table>
+<script>
+/*SM*/const M=${pMetaJSON};/*EM*/
+/*SD*/const C=[`;
+}
+
+function partFoot(){
+  return `];/*ED*/
+<\/script>
+</body></html>`;
+}
+
+// ── Standalone decoder.html ───────────────────────────────────────────────────
+function decoderHTML(){
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>File Smuggling — Decoder</title>
+${BASE_CSS}
+</head>
+<body>
+<h2>File Smuggling — Decoder</h2>
+<div class="ver">Reads part HTML files from a folder &nbsp;|&nbsp; No file size limit &nbsp;|&nbsp; Requires Chrome or Edge</div>
+<table border="0" style="background:#1abc9c">
+<tr>
+  <td>Password</td>
+  <td><input type="password" id="pw" placeholder="if the file was encrypted"></td>
+</tr>
+<tr>
+  <td colspan="2" style="padding:8px 10px 12px;">
+    <button id="btn" onclick="run()">Open Folder &amp; Decode</button>
+    <div class="note">
+      Pick the folder containing the <b>.part*.html</b> files.<br>
+      The decoder reads them directly — no browser-open needed, no RAM limit.<br>
+      The decoded file is saved automatically to the same folder.
+    </div>
+  </td>
+</tr>
+</table>
+<progress id="prog" max="100" value="0"></progress>
+<div class="st" id="st"></div>
+<script>
+function fmtB(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';}
+function b64u8(b){const bin=atob(b),r=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)r[i]=bin.charCodeAt(i);return r;}
+function st(m){document.getElementById('st').textContent=m;}
+function pr(v){const p=document.getElementById('prog');p.style.display='block';p.value=v;}
+function bz(v){document.getElementById('btn').disabled=v;}
+function xM(h){try{const s='/*SM*/const M=',e=';/*EM*/';const si=h.indexOf(s)+s.length,ei=h.indexOf(e,si);if(si<s.length||ei<0)return null;return JSON.parse(h.substring(si,ei));}catch{return null;}}
+function xC(h){try{const s='/*SD*/const C=[',e='];/*ED*/';const si=h.indexOf(s)+s.length-1,ei=h.indexOf(e,si)+1;if(si<s.length-1||ei<1)return null;return JSON.parse(h.substring(si,ei));}catch{return null;}}
+async function dk(pw,salt){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+}
+async function run(){
+  if(!('showDirectoryPicker' in window)){st('Requires Chrome or Edge.');return;}
+  bz(true);pr(0);st('Pick the folder with part HTML files...');
+  let dir;
+  try{dir=await window.showDirectoryPicker({mode:'readwrite',startIn:'desktop'});}
+  catch{st('Cancelled.');bz(false);return;}
+  try{
+    st('Scanning folder...');
+    const parts=[];
+    for await(const[name,handle]of dir.entries()){
+      if(handle.kind!=='file')continue;
+      const m=name.match(/\\.part(\\d+)\\.html$/i);
+      if(m)parts.push({name,handle,num:parseInt(m[1])});
+    }
+    parts.sort((a,b)=>a.num-b.num);
+    if(!parts.length){st('No .part*.html files found in this folder.');bz(false);return;}
+    st('Reading metadata...');
+    const t0=await(await parts[0].handle.getFile()).text();
+    const meta=xM(t0);
+    if(!meta){st('Cannot read metadata — invalid part file.');bz(false);return;}
+    const pw=document.getElementById('pw').value;
+    if(meta.enc&&!pw){st('File is encrypted — enter the password first.');bz(false);return;}
+    let key=null;
+    if(meta.enc){st('Deriving key...');key=await dk(pw,b64u8(meta.salt));}
+    st('Creating output: '+meta.origName+'...');
+    const oh=await dir.getFileHandle(meta.origName,{create:true});
+    const wr=await oh.createWritable();
+    let done=0,est=0;
+    try{
+      for(let pi=0;pi<parts.length;pi++){
+        st('Part '+(pi+1)+'/'+parts.length+': reading...');
+        const txt=pi===0?t0:await(await parts[pi].handle.getFile()).text();
+        const chunks=xC(txt);
+        if(!chunks)throw new Error('Cannot read data from part '+(pi+1));
+        if(!est)est=parts.length*chunks.length;
+        for(let ci=0;ci<chunks.length;ci++){
+          let d=b64u8(chunks[ci].d);
+          if(meta.enc){
+            try{d=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u8(chunks[ci].iv)},key,d));}
+            catch{throw new Error('Decryption failed — wrong password or corrupted part '+(pi+1));}
+          }
+          for(let k=0;k<d.length;k+=65536)await wr.write(d.subarray(k,Math.min(k+65536,d.length)));
+          chunks[ci]=null;done++;
+          pr(Math.round((done/Math.max(est,done+1))*99));
+          st('Part '+(pi+1)+'/'+parts.length+' — chunk '+(ci+1)+'/'+chunks.length);
+          await new Promise(r=>setTimeout(r,0));
+        }
+      }
+      await wr.close();
+      pr(100);st('Done. Saved: '+meta.origName+' ('+fmtB(meta.totalSize)+')');
+    }catch(e){try{await wr.abort();}catch(_){}throw e;}
+  }catch(e){st('Error: '+e.message);console.error(e);}
+  bz(false);
+}
+<\/script>
+</body></html>`;
+}
+</script>
+</body>
+</html>
