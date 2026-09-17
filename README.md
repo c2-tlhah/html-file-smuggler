@@ -2,10 +2,18 @@
 
 [![Author: tlha](https://img.shields.io/badge/Author-tlha-111111?logo=github&logoColor=white)](https://github.com/c2-tlhah)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Vanilla JS](https://img.shields.io/badge/Vanilla-JavaScript-f7df1e?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Web Crypto API](https://img.shields.io/badge/Security-AES--256--GCM-1abc9c?logo=gnupg&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
-[![Chromium Compatible](https://img.shields.io/badge/Compatibility-Chrome%20%7C%20Edge-4285F4?logo=googlechrome&logoColor=white)](https://www.google.com/chrome/)
+[![Vanilla JS](https://img.shields.io/badge/Vanilla-JavaScript-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![HTML5](https://img.shields.io/badge/HTML5-Pure%20Markup-E34F26?logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
+[![CSS3](https://img.shields.io/badge/CSS3-No%20Frameworks-1572B6?logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
+[![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-1abc9c?logo=gnupg&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
+[![Chromium Compatible](https://img.shields.io/badge/Platform-Chromium%20%7C%20Edge%20%7C%20Chrome-4285F4?logo=googlechrome&logoColor=white)](https://www.google.com/chrome/)
 [![File System Access API](https://img.shields.io/badge/API-File%20System%20Access-orange?logo=files&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-success?logo=buffer&logoColor=white)](https://github.com/c2-tlhah/html-file-smuggler)
+[![Dual-Use Tool](https://img.shields.io/badge/Nature-Dual--Use-red?logo=hackthebox&logoColor=white)](https://attack.mitre.org/techniques/T1027/006/)
+
+> *"The tool itself has no evilness—intent lies solely with the operator."*
+>
+> The distinctive split red-and-green design reflects the dual-use reality of HTML smuggling: red signifies offensive simulation, red-teaming, and evasion testing; green signifies authorized file recovery, air-gap transportation, and administrative utility.
 
 High-performance, zero-dependency browser utility for client-side HTML file smuggling, AES-256-GCM encryption, chunked streaming, and split-file decoding.
 
