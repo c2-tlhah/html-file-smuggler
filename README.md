@@ -53,15 +53,6 @@ A standalone, browser-based utility that packages arbitrary files into self-extr
 
 ---
 
-## Project Structure
-
-- `index.html` — Main encoder application.
-- `decoder.html` — Portable standalone directory decoder.
-- `LICENSE` — MIT License.
-- `README.md` — Project documentation.
-
----
-
 ## Author & Credits
 
 - Author: [tlha](https://github.com/c2-tlhah) ([@c2-tlhah](https://github.com/c2-tlhah))
