@@ -1,5 +1,11 @@
 # HTML File Smuggler
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Vanilla JS](https://img.shields.io/badge/Vanilla-JavaScript-f7df1e?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Web Crypto API](https://img.shields.io/badge/Security-AES--256--GCM-1abc9c?logo=gnupg&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
+[![Chromium Compatible](https://img.shields.io/badge/Compatibility-Chrome%20%7C%20Edge-4285F4?logo=googlechrome&logoColor=white)](https://www.google.com/chrome/)
+[![File System Access API](https://img.shields.io/badge/API-File%20System%20Access-orange?logo=files&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
+
 High-performance, zero-dependency browser utility for client-side HTML file smuggling, AES-256-GCM encryption, chunked streaming, and split-file decoding.
 
 ## Overview

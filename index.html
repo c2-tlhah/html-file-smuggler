@@ -2,198 +2,75 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>File Smuggling — Encoder</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 36px 20px;
-    background: #ffffff;
-    color: #1f2328;
-    max-width: 580px;
-    margin: 0 auto;
-    line-height: 1.5;
-  }
-  .header {
-    margin-bottom: 20px;
-    border-bottom: 1px solid #d0d7de;
-    padding-bottom: 12px;
-  }
-  h2 {
-    font-size: 17px;
-    font-weight: 600;
-    color: #1f2328;
-    letter-spacing: -0.2px;
-  }
-  .version {
-    font-size: 12px;
-    color: #656d76;
-    margin-top: 3px;
-  }
-  .card {
-    background: #f6f8fa;
-    border: 1px solid #d0d7de;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .form-table {
-    border-collapse: collapse;
-    width: 100%;
-  }
-  .form-table td {
-    padding: 10px 14px;
-    font-size: 13px;
-    vertical-align: middle;
-  }
-  .form-table tr:not(:last-child) td {
-    border-bottom: 1px solid #e7eaed;
-  }
-  .lbl {
-    width: 90px;
-    color: #24292f;
-    font-weight: 500;
-    user-select: none;
-  }
-  input[type=file] {
-    font-family: inherit;
-    font-size: 13px;
-    color: #1f2328;
-  }
+  body     { font-family: Arial, Helvetica, sans-serif; padding: 24px; background: #fff; max-width: 560px; }
+  h2       { margin: 0 0 2px; font-size: 16px; color: #000; }
+  .version { font-size: 11px; color: #888; margin-bottom: 20px; }
+  table    { border-spacing: 0; width: 100%; }
+  td       { padding: 6px 10px; font-size: 13px; vertical-align: middle; }
+  td:first-child { width: 90px; color: #111; }
+  input[type=file]     { font-family: Arial; font-size: 13px; }
   input[type=text],
-  input[type=password] {
-    font-family: inherit;
-    font-size: 13px;
-    width: 100%;
-    padding: 6px 10px;
-    border: 1px solid #d0d7de;
-    border-radius: 4px;
-    background: #ffffff;
-    color: #1f2328;
-  }
-  input[type=text]:focus,
-  input[type=password]:focus {
-    outline: 2px solid #0969da;
-    outline-offset: -1px;
-    border-color: #0969da;
-  }
-  .file-est {
-    font-size: 12px;
-    color: #57606a;
-  }
-  .actions-cell {
-    background: #ffffff;
-    padding: 12px 14px;
-  }
-  .actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  button {
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 6px 16px;
-    cursor: pointer;
-    background: #ffffff;
-    color: #24292f;
-    border: 1px solid #d0d7de;
-    border-radius: 4px;
-  }
-  button:hover:not(:disabled) {
-    background: #f3f4f6;
-  }
-  button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-  button.primary {
-    background: #24292f;
-    color: #ffffff;
-    border-color: #24292f;
-  }
-  button.primary:hover:not(:disabled) {
-    background: #323842;
-  }
-  progress {
-    display: none;
-    width: 100%;
-    height: 6px;
-    margin-top: 14px;
-    accent-color: #24292f;
-  }
-  .st {
-    font-size: 12px;
-    color: #57606a;
-    margin-top: 8px;
-    min-height: 18px;
-    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-  }
-  .foot {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid #d0d7de;
-    font-size: 12px;
-    color: #57606a;
-    line-height: 1.6;
-  }
-  .foot-action {
-    margin-bottom: 12px;
-  }
-  .foot-action button {
-    font-size: 12px;
-    padding: 3px 10px;
-  }
+  input[type=password] { font-family: Arial; font-size: 13px; width: 100%; box-sizing: border-box; padding: 3px 6px; border: 1px solid #999; }
+  .actions { padding: 10px 10px 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  button   { font-family: Arial; font-size: 13px; padding: 4px 14px; cursor: pointer; background: #fff; border: 1px solid #777; }
+  button:hover:not(:disabled) { background: #eee; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.primary { background: #1a7a60; color: #fff; border-color: #1a7a60; }
+  button.primary:hover:not(:disabled) { background: #166952; }
+  progress { display: none; width: 100%; height: 10px; margin-top: 10px; }
+  .st      { font-size: 11px; color: #333; margin-top: 6px; min-height: 16px; }
+  .file-est{ font-size: 11px; color: #222; padding: 4px 10px 0; }
+  hr       { border: none; border-top: 1px solid #ccc; margin: 22px 0 16px; }
+  .foot    { font-size: 11px; color: #666; line-height: 1.5; }
+  .foot button { font-size: 11px; padding: 2px 10px; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h2>File Smuggling — Encoder</h2>
-  <div class="version">AES-256-GCM &bull; Streamed Chunking &bull; Requires Chrome or Edge</div>
-</div>
+<h2>File Smuggling — Encoder</h2>
+<div class="version">v2.3 &nbsp;|&nbsp; AES-256-GCM &nbsp;|&nbsp; Requires Chrome or Edge</div>
 
-<div class="card">
-  <table class="form-table">
-    <tr>
-      <td class="lbl">File</td>
-      <td><input type="file" id="bfile" onchange="onFile()"></td>
-    </tr>
-    <tr>
-      <td class="lbl">Password</td>
-      <td><input type="password" id="bpw" placeholder="Optional — enables AES-256-GCM encryption"></td>
-    </tr>
-    <tr>
-      <td class="lbl">Note</td>
-      <td><input type="text" id="bmsg" placeholder="Optional message displayed to recipient"></td>
-    </tr>
-    <tr>
-      <td colspan="2">
-        <div class="file-est" id="est">No file selected.</div>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" class="actions-cell">
-        <div class="actions">
-          <button class="primary" id="b1" onclick="buildSingle()">Build Single HTML</button>
-          <button id="b2" onclick="buildSplit()">Build Split to Folder</button>
-        </div>
-      </td>
-    </tr>
-  </table>
-</div>
+<table border="0" style="background:#1abc9c">
+  <tr>
+    <td>File</td>
+    <td><input type="file" id="bfile" onchange="onFile()"></td>
+  </tr>
+  <tr>
+    <td>Password</td>
+    <td><input type="password" id="bpw" placeholder="optional — enables AES-256-GCM encryption"></td>
+  </tr>
+  <tr>
+    <td>Note</td>
+    <td><input type="text" id="bmsg" placeholder="optional message shown to recipient"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <div class="file-est" id="est"></div>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <div class="actions">
+        <button class="primary" id="b1" onclick="buildSingle()">Build Single HTML</button>
+        <button id="b2" onclick="buildSplit()">Build Split to Folder</button>
+      </div>
+    </td>
+  </tr>
+</table>
 
 <progress id="bp" max="100" value="0"></progress>
 <div class="st" id="bs"></div>
 
+<hr>
+
 <div class="foot">
-  <div class="foot-action">
-    Need a standalone decoder for the target machine?&nbsp;
-    <button id="b3" onclick="saveDecoder()">Save decoder.html</button>
-  </div>
-  <b>Single HTML</b>: One self-contained file. Loads in browser memory during extraction (~1.4&times; file size). Recommended for files up to ~7 GB on a 16 GB machine.<br>
-  <b>Split to Folder</b>: Uniform ~50 MB parts with negligible RAM usage (~2 MB). Suitable for multi-gigabyte payloads.
+  Need a decoder for the target machine?&nbsp;
+  <button id="b3" onclick="saveDecoder()">Save decoder.html</button>
+  <br><br>
+  <b>Single HTML</b>: one self-contained file. On retrieval, the HTML loads into browser RAM (~1.4&times; file size). Safe up to ~7 GB on a 16 GB machine.<br>
+  <b>Split to Folder</b>: parts ~50 MB each — safe to decode on any machine. Run decoder.html on target.
 </div>
 
 <script>
@@ -368,113 +245,16 @@ function xChunks(html){
 // HTML TEMPLATES
 // ═══════════════════════════════════════════════════════════════════════════════
 const BASE_CSS = `<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  padding: 36px 20px;
-  background: #ffffff;
-  color: #1f2328;
-  max-width: 520px;
-  margin: 0 auto;
-  line-height: 1.5;
-}
-.header {
-  margin-bottom: 20px;
-  border-bottom: 1px solid #d0d7de;
-  padding-bottom: 12px;
-}
-h2 {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1f2328;
-  letter-spacing: -0.2px;
-}
-.ver {
-  font-size: 12px;
-  color: #656d76;
-  margin-top: 3px;
-}
-.card {
-  background: #f6f8fa;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.form-table {
-  border-collapse: collapse;
-  width: 100%;
-}
-.form-table td {
-  padding: 10px 14px;
-  font-size: 13px;
-  vertical-align: middle;
-}
-.form-table tr:not(:last-child) td {
-  border-bottom: 1px solid #e7eaed;
-}
-.lbl {
-  width: 90px;
-  color: #24292f;
-  font-weight: 500;
-  user-select: none;
-}
-input[type=password] {
-  font-family: inherit;
-  font-size: 13px;
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid #d0d7de;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #1f2328;
-}
-input[type=password]:focus {
-  outline: 2px solid #0969da;
-  outline-offset: -1px;
-  border-color: #0969da;
-}
-.actions-cell {
-  background: #ffffff;
-  padding: 12px 14px;
-}
-button {
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 16px;
-  cursor: pointer;
-  background: #24292f;
-  color: #ffffff;
-  border: 1px solid #24292f;
-  border-radius: 4px;
-}
-button:hover:not(:disabled) {
-  background: #323842;
-}
-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-progress {
-  display: none;
-  width: 100%;
-  height: 6px;
-  margin-top: 14px;
-  accent-color: #24292f;
-}
-.st {
-  font-size: 12px;
-  color: #57606a;
-  margin-top: 8px;
-  min-height: 18px;
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-}
-.note {
-  font-size: 12px;
-  color: #57606a;
-  margin-top: 8px;
-  line-height: 1.5;
-}
+body{font-family:Arial,Helvetica,sans-serif;padding:24px;background:#fff;max-width:500px;}
+h2{margin:0 0 2px;font-size:16px;color:#000;} .ver{font-size:11px;color:#888;margin-bottom:20px;}
+table{border-spacing:0;width:100%;} td{padding:6px 10px;font-size:13px;vertical-align:middle;}
+td:first-child{width:90px;color:#111;}
+input[type=password]{font-family:Arial;font-size:13px;width:100%;box-sizing:border-box;padding:3px 6px;border:1px solid #999;}
+button{font-family:Arial;font-size:13px;padding:4px 14px;cursor:pointer;background:#1a7a60;color:#fff;border:1px solid #1a7a60;}
+button:hover:not(:disabled){background:#166952;} button:disabled{opacity:.4;cursor:default;}
+progress{display:none;width:100%;height:10px;margin-top:10px;}
+.st{font-size:11px;color:#333;margin-top:6px;min-height:16px;}
+.note{font-size:11px;color:#222;margin-top:8px;line-height:1.6;}
 </style>`;
 
 // Retrieve JS helpers (embedded in single + part HTML pages)
@@ -497,24 +277,18 @@ function singleHead(name,size,enc,metaJSON,msg){
 ${BASE_CSS}
 </head>
 <body>
-<div class="header">
-  <h2>File Smuggling — Retrieve</h2>
-  <div class="ver">${escH(name)} &nbsp;|&nbsp; ${fmtB(size)}${enc?' &nbsp;|&nbsp; AES-256-GCM':''}</div>
-</div>
-<div class="card">
-  <table class="form-table">
-    ${msg?`<tr><td colspan="2"><div class="note"><b>Note:</b> ${escH(msg)}</div></td></tr>`:''}
-    ${enc?`<tr><td class="lbl">Password</td><td><input type="password" id="pw" placeholder="Enter password"></td></tr>`:''}
-    <tr>
-      <td colspan="2" class="actions-cell">
-        <button id="btn" onclick="retrieve()">Retrieve File</button>
-        <div class="note">
-          ${enc?'Enter the password and click Retrieve.':'Click Retrieve to download the file.'}
-        </div>
-      </td>
-    </tr>
-  </table>
-</div>
+<h2>File Smuggling — Retrieve</h2>
+<div class="ver">${escH(name)} &nbsp;|&nbsp; ${fmtB(size)}${enc?' &nbsp;|&nbsp; AES-256-GCM':''}</div>
+<table border="0" style="background:#1abc9c">
+<tr><td colspan="2">
+  ${msg?'<b>Note:</b> '+escH(msg)+'<br><br>':''}
+  ${enc?'Password: <input type="password" id="pw" placeholder="Enter password"><br><br>':''}
+  <button id="btn" onclick="retrieve()">Retrieve File</button>
+  <div class="note">
+    ${enc?'Enter the password and click Retrieve.':'Click Retrieve to download the file.'}
+  </div>
+</td></tr>
+</table>
 <progress id="prog" max="100" value="0"></progress>
 <div class="st" id="st"></div>
 <script>
@@ -578,23 +352,15 @@ function partHead(origName,totalSize,enc,pMetaJSON,msg,partNum,totalParts){
 ${BASE_CSS}
 </head>
 <body>
-<div class="header">
-  <h2>File Smuggling — Part ${partNum} of ${totalParts}</h2>
-  <div class="ver">${escH(origName)} &nbsp;|&nbsp; ${fmtB(totalSize)}</div>
-</div>
-<div class="card">
-  <table class="form-table">
-    <tr>
-      <td style="padding: 14px;">
-        ${msg?`<div style="margin-bottom: 10px;"><b>Note:</b> ${escH(msg)}</div>`:''}
-        <div class="note">
-          This is part ${partNum} of ${totalParts}.<br>
-          Open <b>decoder.html</b> in the same folder to reconstruct the complete file.
-        </div>
-      </td>
-    </tr>
-  </table>
-</div>
+<h2>File Smuggling — Part ${partNum} of ${totalParts}</h2>
+<div class="ver">${escH(origName)} &nbsp;|&nbsp; ${fmtB(totalSize)}</div>
+<table border="0" style="background:#1abc9c">
+<tr><td colspan="2">
+  ${msg?'<b>Note:</b> '+escH(msg)+'<br><br>':''}
+  <div class="note">This is part ${partNum} of ${totalParts}.<br>
+  Open <b>decoder.html</b> (in the same folder) to decode all parts and retrieve the file.</div>
+</td></tr>
+</table>
 <script>
 /*SM*/const M=${pMetaJSON};/*EM*/
 /*SD*/const C=[`;
@@ -614,28 +380,24 @@ function decoderHTML(){
 ${BASE_CSS}
 </head>
 <body>
-<div class="header">
-  <h2>File Smuggling — Decoder</h2>
-  <div class="ver">Folder Extraction &bull; Negligible RAM Footprint &bull; Requires Chrome or Edge</div>
-</div>
-<div class="card">
-  <table class="form-table">
-    <tr>
-      <td class="lbl">Password</td>
-      <td><input type="password" id="pw" placeholder="Required if file was encrypted"></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="actions-cell">
-        <button id="btn" onclick="run()">Open Folder &amp; Decode</button>
-        <div class="note">
-          Select the folder containing the <b>.part*.html</b> files.<br>
-          Parts are read as text streams directly from disk without DOM rendering.<br>
-          Reconstructed output will be saved into the same folder.
-        </div>
-      </td>
-    </tr>
-  </table>
-</div>
+<h2>File Smuggling — Decoder</h2>
+<div class="ver">Reads part HTML files from a folder &nbsp;|&nbsp; No file size limit &nbsp;|&nbsp; Requires Chrome or Edge</div>
+<table border="0" style="background:#1abc9c">
+<tr>
+  <td>Password</td>
+  <td><input type="password" id="pw" placeholder="if the file was encrypted"></td>
+</tr>
+<tr>
+  <td colspan="2" style="padding:8px 10px 12px;">
+    <button id="btn" onclick="run()">Open Folder &amp; Decode</button>
+    <div class="note">
+      Pick the folder containing the <b>.part*.html</b> files.<br>
+      The decoder reads them directly — no browser-open needed, no RAM limit.<br>
+      The decoded file is saved automatically to the same folder.
+    </div>
+  </td>
+</tr>
+</table>
 <progress id="prog" max="100" value="0"></progress>
 <div class="st" id="st"></div>
 <script>
